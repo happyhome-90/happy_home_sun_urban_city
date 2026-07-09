@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f766e">
+  <title>B&#7843;ng T&#237;nh Gi&#225; Ng&#7885;c C&#7843;nh Sun Urban City</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <main class="app-shell">
+    <header class="topbar brand-hero">
+      <div class="brand-copy">
+        <p class="eyebrow">Sun Urban City - Happy Home</p>
+        <h1><span>B&#7843;ng T&#237;nh Gi&#225;</span><strong>Ng&#7885;c C&#7843;nh Sun Urban City</strong></h1>
+        <div class="social-links" aria-label="Liên hệ Ngọc Cảnh">
+          <a class="social-chip facebook" href="https://www.facebook.com/DuongNgocCanh88"
+            target="_blank" rel="noopener" aria-label="Mở Facebook Ngọc Cảnh">
+            <svg viewBox="0 0 32 32" aria-hidden="true">
+              <path class="fb" fill-rule="evenodd"
+                d="M16 2C8.3 2 2 8.3 2 16c0 7 5.1 12.8 11.8 13.8V20H10.3v-4h3.5v-2.9c0-3.5 2.1-5.4 5.3-5.4 1.5 0 3.1.3 3.1.3v3.4h-1.7c-1.7 0-2.3 1.1-2.3 2.2V16h3.9l-.6 4h-3.3v9.8C24.9 28.8 30 23 30 16c0-7.7-6.3-14-14-14z" />
+            </svg>
+            <span>Facebook: <b>@DuongNgocCanh88</b></span>
+          </a>
+          <a class="social-chip zalo" href="https://zalo.me/0987376051" target="_blank" rel="noopener"
+            aria-label="Mở Zalo 0987.376.051">
+            <svg viewBox="0 0 36 36" aria-hidden="true">
+              <rect x="2" y="2" width="32" height="32" rx="8" />
+              <text x="18" y="22" text-anchor="middle">Zalo</text>
+            </svg>
+            <span>Zalo: <b>0987.376.051</b></span>
+          </a>
+        </div>
+      </div>
+      <button class="icon-button" id="resetBtn" type="button" title="Nhập lại">
+        <span aria-hidden="true">&#8635;</span>
+      </button>
+    </header>
+
+    <section class="summary-band" aria-live="polite">
+      <div>
+        <span class="label">Tổng giá</span>
+        <strong id="totalPrice">0</strong>
+      </div>
+      <div>
+        <span class="label">Tiền trước</span>
+        <strong id="upfrontPrice">0</strong>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="grid two">
+        <label>
+          Mã căn
+          <input id="unitCode" autocomplete="off" value="P90316">
+        </label>
+        <label>
+          Nhóm toà
+          <select id="policyGroup">
+            <option value="P3P9">P3-P9</option>
+            <option value="P10P18">P10/P16/P18</option>
+            <option value="P7P15P19">P7/P15/P19</option>
+            <option value="P24P26">P24/P25/P26</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid three">
+        <label>
+          Loại căn
+          <select id="unitType">
+            <option value="Studio">Studio</option>
+            <option value="1BR+">1BR+</option>
+            <option value="2BR">2BR</option>
+          </select>
+        </label>
+        <label>
+          Diện tích
+          <input id="area" inputmode="decimal" value="29.70">
+        </label>
+        <label>
+          Ngày báo giá
+          <input id="quoteDate" type="date" value="2026-07-08">
+        </label>
+      </div>
+
+      <label>
+        Giá đã gồm VAT/KPBT
+        <input id="listedGross" inputmode="numeric" value="1,671,152,684" data-money-input>
+      </label>
+
+      <label>
+        Giá chưa VAT/KPBT
+        <input id="baseNet" inputmode="numeric" value="1,492,100,611" data-money-input readonly>
+      </label>
+    </section>
+
+    <section class="panel">
+      <h2>Phương án</h2>
+      <div class="segmented" role="radiogroup" aria-label="Phương án thanh toán">
+        <button type="button" data-scenario="loan" class="active">Có vay</button>
+        <button type="button" data-scenario="standard">Không vay</button>
+        <button type="button" data-scenario="tts50">TTS 50%</button>
+        <button type="button" data-scenario="tts70">TTS 70%</button>
+        <button type="button" data-scenario="tts95">TTS 95%</button>
+      </div>
+
+      <div class="switch-row">
+        <label class="switch">
+          <input id="bankGuarantee" type="checkbox" checked>
+          <span>Cộng 1% bảo lãnh NH</span>
+        </label>
+      </div>
+
+      <div class="grid">
+        <label>
+          Tỷ lệ vay
+          <input id="loanRatio" inputmode="decimal" value="70">
+        </label>
+      </div>
+    </section>
+
+    <section class="panel results">
+      <h2>Kết quả</h2>
+      <div id="resultRows" class="result-list"></div>
+      <button class="primary" id="copyBtn" type="button">Copy báo giá</button>
+    </section>
+
+    <section class="panel compact">
+      <h2>Chi tiết CK</h2>
+      <div id="discountRows" class="result-list"></div>
+    </section>
+
+    <section class="panel compact">
+      <h2>Tiến độ tạm tính</h2>
+      <div id="scheduleRows" class="result-list"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+
+</html>
