@@ -65,7 +65,16 @@ select {
 }
 
 .brand-copy {
+  flex: 1;
   min-width: 0;
+}
+
+.brand-logo {
+  flex: 0 0 auto;
+  width: clamp(64px, 15vw, 96px);
+  height: auto;
+  align-self: center;
+  mix-blend-mode: multiply;
 }
 
 .eyebrow {
