@@ -90,13 +90,18 @@ const depositByType = {
 };
 
 // Nhãn hiển thị cho từng phương án thanh toán (khớp với data-scenario ở HTML).
+// 3 mức TTS gộp chung 1 tab "tts"; mức 50/70/95 lấy từ ô nhập -> nhãn dựng động.
 const scenarioLabels = {
   loan: "Có vay",
   standard: "Không vay",
-  tts50: "TTS 50%",
-  tts70: "TTS 70%",
-  tts95: "TTS 95%",
+  tts: "TTS",
 };
+
+// Nhãn phương án đang chọn để hiển thị; riêng "tts" gắn thêm mức % đang nhập ("TTS 50%").
+function currentScenarioLabel() {
+  if (activeScenario === "tts") return `TTS ${parseNumber(els.ttsPercent.value) || 0}%`;
+  return scenarioLabels[activeScenario] || activeScenario;
+}
 
 // Cache tham chiếu tới các phần tử DOM dùng nhiều lần (tránh querySelector lặp lại).
 const els = {
@@ -108,6 +113,14 @@ const els = {
   listedGross: document.querySelector("#listedGross"),   // giá niêm yết đã gồm VAT/KPBT
   baseNet: document.querySelector("#baseNet"),           // giá net (tự tính từ listedGross)
   bankGuarantee: document.querySelector("#bankGuarantee"),// tuỳ chọn cộng 1% bảo lãnh NH
+  discountInputs: document.querySelector("#discountInputs"), // khối ô CK (hiện ở "Có vay" & "Không vay")
+  ebField: document.querySelector("#ebField"),           // ô "CK Early Bird" (chỉ hiện khi nhóm toà có EB)
+  earlyBirdRate: document.querySelector("#earlyBirdRate"),// % CK Early Bird (nhập tay, mặc định theo nhóm toà)
+  noLoanField: document.querySelector("#noLoanField"),   // ô "CK không vay" (chỉ hiện ở tab "Không vay")
+  noLoanRate: document.querySelector("#noLoanRate"),     // % CK không vay (nhập tay, mặc định theo nhóm toà)
+  guaranteeRate: document.querySelector("#guaranteeRate"),// % CK bảo lãnh NH (nhập tay, mặc định 1%)
+  ttsField: document.querySelector("#ttsField"),         // ô "TTS" (chỉ hiện ở tab "TTS")
+  ttsPercent: document.querySelector("#ttsPercent"),     // mức TTS 50/70/95 (datalist, mặc định 50)
   loanRatio: document.querySelector("#loanRatio"),       // tỷ lệ vay (%)
   totalPrice: document.querySelector("#totalPrice"),     // ô hiển thị tổng giá
   upfrontPrice: document.querySelector("#upfrontPrice"), // ô hiển thị tiền trước
@@ -209,6 +222,27 @@ function spreadDates(startValue, endValue, count) {
 // Tính "giá chưa VAT/KPBT" = giá niêm yết / 1.12 (VAT 10% + KPBT 2%) và đổ vào ô baseNet.
 function syncBaseFromGross() {
   els.baseNet.value = inputMoney(parseMoney(els.listedGross.value) / 1.12);
+}
+
+// Đổi tỷ lệ thập phân (0.05) thành chuỗi % để đổ vào ô nhập ("5"), giữ tối đa 2 số lẻ.
+function rateToInput(rate) {
+  return String(round((rate || 0) * 10000) / 100);
+}
+
+// Đổ mức CK phụ thuộc nhóm toà (EB + không vay) vào ô nhập. Gọi khi đổi nhóm toà.
+function syncPolicyDiscountRates() {
+  const policy = policies[els.policyGroup.value];
+  els.earlyBirdRate.value = rateToInput(policy.earlyBird);
+  els.noLoanRate.value = rateToInput(policy.noLoanDiscount);
+}
+
+// Reset toàn bộ ô CK về mặc định (EB + không vay theo nhóm toà, BLNH 1% + bật checkbox).
+// Gọi khi chuyển tab phương án và khi nhấn "nhập lại".
+function resetDiscountInputs() {
+  syncPolicyDiscountRates();
+  els.guaranteeRate.value = "1";
+  els.bankGuarantee.checked = true;
+  els.ttsPercent.value = "0";
 }
 
 // Chuẩn hoá lại giá trị đang có trong một ô input tiền (phân tách nghìn).
@@ -350,8 +384,10 @@ function calculate(options = {}) {
   const fixed = policy.fixedDiscounts[unitType] || 0;
   remaining = applyDiscount(discounts, `CK loại căn ${unitType}`, fixed, remaining, false); // CK cố định (số tiền)
 
-  if (policy.earlyBird) {
-    remaining = applyDiscount(discounts, "Early Bird", policy.earlyBird, remaining);
+  // CK Early Bird: lấy % từ ô nhập (mặc định = policy.earlyBird, người dùng có thể sửa).
+  const earlyBirdRate = parseNumber(els.earlyBirdRate.value) / 100;
+  if (earlyBirdRate > 0) {
+    remaining = applyDiscount(discounts, `Early Bird ${percent(earlyBirdRate)}`, earlyBirdRate, remaining);
   }
 
   if (policy.completionDiscount) {
@@ -363,18 +399,25 @@ function calculate(options = {}) {
     );
   }
 
+  // CK không vay: áp cho mọi phương án khác "Có vay"; lấy % từ ô nhập (mặc định = policy.noLoanDiscount).
   if (scenario !== "loan") {
-    remaining = applyDiscount(discounts, "Không vay 5%", policy.noLoanDiscount, remaining);
+    const noLoanRate = parseNumber(els.noLoanRate.value) / 100;
+    if (noLoanRate > 0) {
+      remaining = applyDiscount(discounts, `Không vay ${percent(noLoanRate)}`, noLoanRate, remaining);
+    }
   }
 
-  if (includeGuarantee) {
-    remaining = applyDiscount(discounts, "CK bảo lãnh NH 1%", 0.01, remaining);
+  // CK bảo lãnh NH: checkbox bật/tắt, ô nhập quyết định % (mặc định 1%).
+  const guaranteeRate = parseNumber(els.guaranteeRate.value) / 100;
+  if (includeGuarantee && guaranteeRate > 0) {
+    remaining = applyDiscount(discounts, `CK bảo lãnh NH ${percent(guaranteeRate)}`, guaranteeRate, remaining);
   }
 
-  // CK TTS cuốn chiếu theo ngày báo giá (chỉ có với các phương án TTS).
-  const ttsRate = rollingTtsRate(policy, scenario, els.quoteDate.value);
-  if (ttsRate) {
-    remaining = applyDiscount(discounts, `CK ${scenarioLabels[scenario]} ${percent(ttsRate)}`, ttsRate, remaining);
+  // CK TTS (chỉ ở tab "TTS"): gõ thẳng % muốn áp, tính trực tiếp theo % nhập
+  // (không tra bảng ttsJuly, không cuốn chiếu).
+  const ttsRate = scenario === "tts" ? parseNumber(els.ttsPercent.value) / 100 : 0;
+  if (ttsRate > 0) {
+    remaining = applyDiscount(discounts, `CK TTS ${percent(ttsRate)}`, ttsRate, remaining);
   }
 
   // Sau khi trừ hết CK: cộng thuế/phí và giá hoàn thiện để ra tổng giá.
@@ -465,11 +508,27 @@ function row(label, value, className = "") {
  */
 function render() {
   const result = calculate();
+  // Ô CK hiện theo tab VÀ theo việc nhóm toà có khoản đó hay không:
+  //  - EB: chỉ căn có policy.earlyBird.
+  //  - Không vay: mọi tab trừ "Có vay", và căn có policy.noLoanDiscount.
+  //  - BLNH: CK cố định áp mọi căn -> luôn hiện.
+  //  - TTS: chỉ ở tab "TTS".
+  // Số cột grid đổi theo số ô thực tế đang hiện (3 ô -> 3 cột, còn lại -> 2 cột/2x2).
+  const isTts = activeScenario === "tts";
+  const showEb = !!result.policy.earlyBird;
+  const showNoLoan = activeScenario !== "loan" && !!result.policy.noLoanDiscount;
+  const showTts = isTts;
+  els.ebField.style.display = showEb ? "" : "none";
+  els.noLoanField.style.display = showNoLoan ? "" : "none";
+  els.ttsField.style.display = showTts ? "" : "none";
+  const visibleCount = [showEb, showNoLoan, true, showTts].filter(Boolean).length; // +1 cho BLNH luôn hiện
+  els.discountInputs.classList.toggle("three", visibleCount === 3);
+  els.discountInputs.classList.toggle("two", visibleCount !== 3);
   els.totalPrice.textContent = money(result.total);
   els.upfrontPrice.textContent = activeScenario === "loan" ? money(result.upfront) : "";
 
   const rows = [
-    row("Phương án", scenarioLabels[activeScenario], "highlight"),
+    row("Phương án", currentScenarioLabel(), "highlight"),
     row("Nhóm toà", result.policy.name),
     row("Giá thô sau CK", money(result.rawGrossAfterDiscount)),
     row("Giá nội thất/hoàn thiện", money(result.completion)),
@@ -513,7 +572,7 @@ function render() {
 function makeQuoteText(result) {
   const parts = [
     `${els.unitCode.value.trim() || "Căn hộ"} - ${result.policy.name}`,
-    `Phương án: ${scenarioLabels[activeScenario]}`,
+    `Phương án: ${currentScenarioLabel()}`,
     `Tổng giá: ${money(result.total)}`,
   ];
   if (activeScenario === "loan") {
@@ -542,7 +601,7 @@ function resetDefaults() {
   els.quoteDate.value = "2026-07-08";
   els.listedGross.value = "1,671,152,684";
   syncBaseFromGross();
-  els.bankGuarantee.checked = true;
+  resetDiscountInputs();
   els.loanRatio.value = "70";
   activeScenario = "loan";
   document.querySelectorAll(".segmented button").forEach((button) => {
@@ -570,6 +629,9 @@ document.querySelectorAll("input, select").forEach((input) => {
     if (input === els.listedGross) {
       syncBaseFromGross();
     }
+    if (input === els.policyGroup) {
+      syncPolicyDiscountRates(); // đổi nhóm toà -> đưa ô EB + không vay về mức mặc định của toà đó
+    }
     render();
   });
 });
@@ -580,6 +642,7 @@ document.querySelectorAll(".segmented button").forEach((button) => {
     activeScenario = button.dataset.scenario;
     document.querySelectorAll(".segmented button").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
+    resetDiscountInputs(); // chuyển tab -> reset toàn bộ ô CK về mặc định
     render();
   });
 });
@@ -602,7 +665,8 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("service-worker.js").catch(() => {});
 }
 
-// Khởi tạo lần đầu khi tải trang: đồng bộ giá net, định dạng các ô tiền và render.
+// Khởi tạo lần đầu khi tải trang: đồng bộ giá net, mức CK theo toà, định dạng các ô tiền và render.
 syncBaseFromGross();
+syncPolicyDiscountRates();
 document.querySelectorAll("[data-money-input]").forEach(formatMoneyInput);
 render();
