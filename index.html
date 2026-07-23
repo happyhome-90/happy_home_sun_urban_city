@@ -104,15 +104,32 @@
       <div class="segmented" role="radiogroup" aria-label="Phương án thanh toán">
         <button type="button" data-scenario="loan" class="active">Có vay</button>
         <button type="button" data-scenario="standard">Không vay</button>
-        <button type="button" data-scenario="tts50">TTS 50%</button>
-        <button type="button" data-scenario="tts70">TTS 70%</button>
-        <button type="button" data-scenario="tts95">TTS 95%</button>
+        <button type="button" data-scenario="tts">TTS</button>
       </div>
 
       <div class="switch-row">
         <label class="switch">
           <input id="bankGuarantee" type="checkbox" checked>
           <span>Cộng 1% bảo lãnh NH</span>
+        </label>
+      </div>
+
+      <div class="grid two" id="discountInputs">
+        <label id="ebField">
+          Chiết khấu EB (%)
+          <input id="earlyBirdRate" inputmode="decimal" value="0">
+        </label>
+        <label id="noLoanField">
+          Chiết khấu không vay (%)
+          <input id="noLoanRate" inputmode="decimal" value="5">
+        </label>
+        <label>
+          Chiết khấu BLNH (%)
+          <input id="guaranteeRate" inputmode="decimal" value="1">
+        </label>
+        <label id="ttsField">
+          Chiết khấu TTS (%)
+          <input id="ttsPercent" inputmode="decimal" value="0">
         </label>
       </div>
 
